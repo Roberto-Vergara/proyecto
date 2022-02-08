@@ -50,7 +50,7 @@ export class ProductService {
             const { money } = findBuyer;
             const findProduct = await this.productRespository.findOne(id);
             if (!findProduct) {
-                throw { ok: false, message: "product not found", status: 404 }
+                throw { ok: false, message: "product not found aa", status: 404 }
             }
             const { price, user } = findProduct;
             if (price <= money) {
