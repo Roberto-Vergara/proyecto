@@ -7,7 +7,7 @@ export class UserPostDto {
     name: string;
 
     @IsString()
-    usename: string;
+    username: string;
 
     @IsString()
     password: string;

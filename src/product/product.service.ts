@@ -44,31 +44,103 @@ export class ProductService {
 
     }
 
-    async buyProduct(id: string, userId: string) {
+
+    async getProduct(productId): Promise<Product> {
         try {
-            const findBuyer = await this.userRepository.findOne(userId, { relations: ["products"] });
-            const { money } = findBuyer;
-            const findProduct = await this.productRespository.findOne(id);
-            if (!findProduct) {
-                throw { ok: false, message: "product not found aa", status: 404 }
+            const product = await this.productRespository.findOne(productId, { relations: ["user"] });
+            if (!product) {
+                throw { ok: false, message: "product not found", status: 404 }
             }
-            const { price, user } = findProduct;
-            if (price <= money) {
-                findBuyer.money = findBuyer.money - price;
-                findBuyer.products.push(findProduct)
-                user.money = user.money + price;
-                const updateProducts = user.products.filter((data) => data != findProduct)
-                user.products = [...updateProducts]
-                await findBuyer.save()
-                await user.save()
+            return product;
+        } catch (error) {
+            return error;
+        }
+    }
 
-                return { ok: true, message: "producto comprado" }
-            } else {
-                throw "no se pudo comprar el producto"
+    async deposit(money: number, toId: string, user: User) {
+        try {
 
+            // another user
+            const receiver = await this.userRepository.findOne(toId, { relations: ["products"] });
+            user.money = user.money - money;
+            receiver.money = receiver.money + money;
+
+            return { user, receiver }
+
+        } catch (error) {
+            return error;
+        }
+    }
+
+    async tradeProduct(producto: Product, seller: User, buyer: User) {
+        try {
+            const findProduct = await this.productRespository.findOne(producto.id)
+            const findUser = await this.userRepository.findOne(buyer.id)
+
+            producto.user = findUser;
+            buyer.products = [...buyer.products, findProduct]
+            seller.products = [...seller.products.filter((e) => e.id !== findProduct.id)]
+
+            return { producto, seller, buyer }
+
+
+        } catch (error) {
+            return error;
+        }
+    }
+
+
+
+    async buyProduct(productId: string, userId: string) {
+        try {
+            const product = await this.getProduct(productId);
+            const meUser = await this.userRepository.findOne(userId, { relations: ["products"] })
+            if (!meUser) throw "usuario no encontrado token malo";
+
+            if (meUser.money >= product.price) {
+                // user deposit money to receiver and receiver(seller) give his item to user(buyer)
+                const { user, receiver } = await this.deposit(product.price, product.user.id, meUser);
+                // console.log(user, receiver); bien hasta aqui
+
+                const { producto, buyer, seller } = await this.tradeProduct(product, receiver, user);
+                console.log(buyer, seller, producto);
+
+                await buyer.save()
+                await seller.save()
+                await producto.save()
             }
+            else throw { ok: false, message: "no puede comprarlo" }
+
+            return { ok: true, message: "producto comprado" }
+
         } catch (error) {
             console.log(error);
+        }
+
+    }
+
+
+
+
+    async getProducts() {
+        return this.productRespository.find();
+    }
+
+
+    async getProductInfo(id: string) {
+        try {
+            const product = await this.productRespository.findOne(id, { relations: ["user"] })
+            if (!product) {
+                throw { ok: false, message: "product not found", status: 404 }
+            }
+            const user_id = product.user.id;
+            const { user, ...rest } = product;
+            const myRes = { ...rest, user_id }
+
+            return myRes;
+        } catch (error) {
+            console.log(error);
+
         }
     }
 }

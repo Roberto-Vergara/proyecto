@@ -14,17 +14,17 @@ export class AuthService {
         try {
             const userInfo = await this.userService.findUser(username);
             if (!userInfo) {
-                throw null
+                throw "usuario no encontrado"
             }
             const hashPass = userInfo.password;
             const compare = await bcrypt.compare(password, hashPass)
             if (!compare) {
-                throw null
+                throw "contraseña incorrecta"
             }
             const { name, id } = userInfo
-
             return { name, id, username: userInfo.username };
         } catch (error) {
+            console.log(error);
             throw null
         }
 
@@ -35,6 +35,6 @@ export class AuthService {
         const { username, name, id } = reqUser;
         const payload = { username, name, id }
         const accessToken = this.jwtService.sign(payload)
-        return accessToken;
+        return { accessToken };
     }
 }
